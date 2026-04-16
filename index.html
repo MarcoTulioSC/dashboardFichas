@@ -318,7 +318,7 @@ onclick="document.body.classList.toggle('dark')">🌙</span>
 /* ============================================================
    CONFIGURAÇÃO DA CONEXÃO (OBRIGATÓRIO PARA VERCEL)
    ============================================================ */
-const URL_API = "https://script.google.com/macros/s/AKfycbyxzKB9l7ox_ykMv7OxDEpL0w388UgpMVPM48qyvjGwmaRNraGN993_jcmOQZobJUE/exec";
+const URL_API = "https://script.google.com/macros/s/AKfycbwnGc9VnRroG_rN6aAaZMXIQYuerZdfGyZETTVB9Am82iOg44HQOuP0ZcAXPvRIcU4/exec";
 
 // Função "Ponte" para substituir o google.script.run
 async function chamarGoogle(funcaoNome, params = {}) {
@@ -422,6 +422,7 @@ function renderizarTabelasDefeitos(res) {
     // Defeitos
     let hDef = "<tr><th>Defeito</th><th>Qtd</th><th>%</th></tr>";
     res.defeitos.forEach(l => {
+        // Agora a função abaixo será encontrada
         hDef += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${criarBarraPercentual(l[2])}</td></tr>`;
     });
     document.getElementById("tabelaDefeitos").innerHTML = hDef;
@@ -440,7 +441,7 @@ function renderizarTabelasDefeitos(res) {
     });
     document.getElementById("tabelaGaragens").innerHTML = hGar;
 
-    // Motoristas
+    // Motoristas (Aqui não usa barra percentual, então l[2] é apenas o texto/número)
     let hMot = "";
     res.motoristas.forEach(l => {
         hMot += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${l[2]}</td></tr>`;
@@ -448,6 +449,18 @@ function renderizarTabelasDefeitos(res) {
     document.getElementById("tabelaMotoristas").innerHTML = hMot;
 }
 
+function criarBarraPercentual(valor) {
+    // Garante que o valor seja um número e trata nulos
+    const num = parseFloat(valor) || 0;
+    const perc = (num * 100).toFixed(1);
+    
+    return `
+        <div style="width:100%; background:#e2e8f0; border-radius:4px; height:12px; margin-top:4px;">
+            <div style="width:${perc}%; background:var(--accent); height:100%; border-radius:4px;"></div>
+        </div>
+        <span style="font-size:10px">${perc}%</span>
+    `;
+}
 
 
 function criarPizza(canvasId, dados, chartExistente, setChart) {
