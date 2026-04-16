@@ -90,10 +90,45 @@ flex:1;
 min-width:280px;
 text-align:center;
 }
+
+/* Tela de carregamento (Overlay) */
+#loader {
+  display: none; /* Escondido por padrão */
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-weight: bold;
+}
+
+.spinner {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid var(--accent);
+  border-radius: 50%;
+  width: 60px; height: 60px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 </style>
 </head>
 
 <body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <span>Processando dados no Google Sheets...</span>
+</div>
 
 <div class="container">
 
@@ -283,7 +318,7 @@ onclick="document.body.classList.toggle('dark')">🌙</span>
 /* ============================================================
    CONFIGURAÇÃO DA CONEXÃO (OBRIGATÓRIO PARA VERCEL)
    ============================================================ */
-const URL_API = "https://script.google.com/macros/s/AKfycbya3CVWSMDeiBjJI0WY0DbVvAAVkgSES_G95qExFg82lrBekBAr9q1m9PgMAWove70/exec";
+const URL_API = "https://script.google.com/macros/s/AKfycbx6JgNLEgmhNqbIGO9YcSQPPMCd5M4ypfos7uVd_QvQbCKjRi6gGvCwxn-PzYeMbcE/exec";
 
 // Função "Ponte" para substituir o google.script.run
 async function chamarGoogle(funcaoNome, params = {}) {
@@ -353,39 +388,67 @@ async function buscarDashboard() {
 async function buscarDefeitos() {
     const mes = document.getElementById("mesDefeitos").value;
     const ano = document.getElementById("anoDefeitos").value;
-    const dia = document.getElementById("diaDefeitos").value;
+
+    mostrarLoader(); // Ativa a tela de carregamento
 
     try {
-        // Primeiro avisamos o Sheets qual mês queremos (sua lógica original fazia isso)
-        await chamarGoogle("definirMesAnoDashboard", { mes, ano });
+        // 1. Grava o mês e ano nas células J18 e J19 da planilha
+        await chamarGoogle("definirMesAnoDefeitos", { ano, mes });
         
-        // Agora pegamos os dados
+        // 2. Aguarda 1.5 segundos (tempo de segurança para o Google recalcular fórmulas)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // 3. Busca os dados atualizados
         const res = await chamarGoogle("obterResumoDefeitosCompleto");
         
-        // Preenche tabela Defeitos
-        let hDef = "<tr><th>Defeito</th><th>Qtd</th><th>%</th></tr>";
-        res.defeitos.forEach(l => hDef += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${(l[2]*100).toFixed(2)}%</td></tr>`);
-        document.getElementById("tabelaDefeitos").innerHTML = hDef;
+        if (!res || res.erro) {
+            alert("Erro ao retornar dados: " + (res.erro || "Verifique a planilha"));
+            return;
+        }
 
-        // Preenche tabela Carros
-        let hCar = "";
-        res.carros.forEach(l => hCar += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${(l[2]*100).toFixed(2)}%</td></tr>`);
-        document.getElementById("tabelaCarros").innerHTML = hCar;
-
-        // Preenche tabela Garagens
-        let hGar = "";
-        res.garagens.forEach(l => hGar += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${(l[2]*100).toFixed(2)}%</td></tr>`);
-        document.getElementById("tabelaGaragens").innerHTML = hGar;
-
-        // Preenche tabela Motoristas
-        let hMot = "";
-        res.motoristas.forEach(l => hMot += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${l[2]}</td></tr>`);
-        document.getElementById("tabelaMotoristas").innerHTML = hMot;
+        // Preenche as tabelas (Defeitos, Carros, Garagens, Motoristas)
+        renderizarTabelasDefeitos(res);
 
     } catch (e) {
-        console.error("Erro nos Defeitos:", e);
+        console.error("Erro na busca de defeitos:", e);
+        alert("Falha na conexão com o Google.");
+    } finally {
+        esconderLoader(); // Desativa a tela de carregamento
     }
 }
+
+// Função auxiliar para organizar o preenchimento das tabelas
+function renderizarTabelasDefeitos(res) {
+    // Defeitos
+    let hDef = "<tr><th>Defeito</th><th>Qtd</th><th>%</th></tr>";
+    res.defeitos.forEach(l => {
+        hDef += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${criarBarraPercentual(l[2])}</td></tr>`;
+    });
+    document.getElementById("tabelaDefeitos").innerHTML = hDef;
+
+    // Carros
+    let hCar = "";
+    res.carros.forEach(l => {
+        hCar += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${criarBarraPercentual(l[2])}</td></tr>`;
+    });
+    document.getElementById("tabelaCarros").innerHTML = hCar;
+
+    // Garagens
+    let hGar = "";
+    res.garagens.forEach(l => {
+        hGar += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${criarBarraPercentual(l[2])}</td></tr>`;
+    });
+    document.getElementById("tabelaGaragens").innerHTML = hGar;
+
+    // Motoristas
+    let hMot = "";
+    res.motoristas.forEach(l => {
+        hMot += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${l[2]}</td></tr>`;
+    });
+    document.getElementById("tabelaMotoristas").innerHTML = hMot;
+}
+
+
 
 function criarPizza(canvasId, dados, chartExistente, setChart) {
     if(!dados || dados.length === 0) return;
@@ -417,6 +480,11 @@ function criarPizza(canvasId, dados, chartExistente, setChart) {
     });
     setChart(chart);
 } // <--- ESTA CHAVE ESTAVA FALTANDO NO SEU CÓDIGO
+
+
+// Funções para mostrar/esconder o carregamento
+function mostrarLoader() { document.getElementById("loader").style.display = "flex"; }
+function esconderLoader() { document.getElementById("loader").style.display = "none"; }
 
 </script>
 
