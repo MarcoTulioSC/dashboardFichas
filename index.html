@@ -283,7 +283,7 @@ onclick="document.body.classList.toggle('dark')">🌙</span>
 /* ============================================================
    CONFIGURAÇÃO DA CONEXÃO (OBRIGATÓRIO PARA VERCEL)
    ============================================================ */
-const URL_API = "https://script.google.com/macros/s/AKfycbxPLTHaMUQZYLaBxveb0B32zFakxZncmphCOm1A5Nxi4yHhhRr6fOZtbf6HIjmz3ao/exec";
+const URL_API = "https://script.google.com/macros/s/AKfycbzV7LZnO6db5Zj2gdtlivfWyjrMaLFmSaom4dDPqShgNYs9_wcFSlnyzuHW1vluWPM/exec";
 
 // Função "Ponte" para substituir o google.script.run
 async function chamarGoogle(funcaoNome, params = {}) {
@@ -318,6 +318,72 @@ async function buscarGraficosPorData(){
         criarPizza("graficoGaragens", res.garagens, chartGaragens, c => chartGaragens = c);
     } catch (error) {
         console.error("Erro ao carregar gráficos:", error);
+    }
+}
+
+async function buscarDashboard() {
+    const dia = document.getElementById("dia").value;
+    const mes = document.getElementById("mes").value;
+    const ano = document.getElementById("ano").value;
+
+    try {
+        // 1. Atualiza totais
+        const totais = await chamarGoogle("obterTotaisMes", { mes, ano });
+        document.getElementById("totalMes").innerText = totais.totalMes;
+        document.getElementById("mediaSemanal").innerText = totais.mediaSemanal;
+
+        // 2. Busca fichas da tabela
+        const fichas = await chamarGoogle("buscarPorData", { dia, mes, ano });
+        let html = "<tr><th>Data</th><th>Qtd</th><th>Semana</th></tr>";
+        fichas.forEach(l => {
+            html += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${l[2]}</td></tr>`;
+        });
+        document.getElementById("resultadoBusca").innerHTML = html;
+
+        // 3. Busca total da semana
+        const sem = await chamarGoogle("obterTotalSemanaPorDia", { dia, mes, ano });
+        document.getElementById("totalSemana").innerText = sem.totalSemana || "0";
+
+    } catch (e) {
+        console.error("Erro no Dashboard:", e);
+    }
+}
+
+
+async function buscarDefeitos() {
+    const mes = document.getElementById("mesDefeitos").value;
+    const ano = document.getElementById("anoDefeitos").value;
+    const dia = document.getElementById("diaDefeitos").value;
+
+    try {
+        // Primeiro avisamos o Sheets qual mês queremos (sua lógica original fazia isso)
+        await chamarGoogle("definirMesAnoDashboard", { mes, ano });
+        
+        // Agora pegamos os dados
+        const res = await chamarGoogle("obterResumoDefeitosCompleto");
+        
+        // Preenche tabela Defeitos
+        let hDef = "<tr><th>Defeito</th><th>Qtd</th><th>%</th></tr>";
+        res.defeitos.forEach(l => hDef += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${(l[2]*100).toFixed(2)}%</td></tr>`);
+        document.getElementById("tabelaDefeitos").innerHTML = hDef;
+
+        // Preenche tabela Carros
+        let hCar = "";
+        res.carros.forEach(l => hCar += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${(l[2]*100).toFixed(2)}%</td></tr>`);
+        document.getElementById("tabelaCarros").innerHTML = hCar;
+
+        // Preenche tabela Garagens
+        let hGar = "";
+        res.garagens.forEach(l => hGar += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${(l[2]*100).toFixed(2)}%</td></tr>`);
+        document.getElementById("tabelaGaragens").innerHTML = hGar;
+
+        // Preenche tabela Motoristas
+        let hMot = "";
+        res.motoristas.forEach(l => hMot += `<tr><td>${l[0]}</td><td>${l[1]}</td><td>${l[2]}</td></tr>`);
+        document.getElementById("tabelaMotoristas").innerHTML = hMot;
+
+    } catch (e) {
+        console.error("Erro nos Defeitos:", e);
     }
 }
 
