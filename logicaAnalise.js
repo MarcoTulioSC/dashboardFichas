@@ -44,11 +44,6 @@ function doGet(e) {
 
 
 
-function doGet() {
-  return HtmlService
-    .createHtmlOutputFromFile("index")
-    .setTitle("Dashboard de Análise");
-}
 
 /* =========================================
    DASHBOARD – DEFINE L1 (ANO) E L2 (MÊS)
