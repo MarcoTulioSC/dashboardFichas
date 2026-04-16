@@ -37,7 +37,7 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ "erro": error.toString() }))
+    return ContentService.createTextOutput(JSON.stringify(resultado))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
